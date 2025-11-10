@@ -1,0 +1,105 @@
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import api from '@/utils/api'
+
+export const useUserStore = defineStore('user', () => {
+  const token = ref(localStorage.getItem('token') || '')
+  const userId = ref(localStorage.getItem('userId') || '')
+  const studentId = ref(localStorage.getItem('studentId') || '')
+  const username = ref(localStorage.getItem('username') || '')
+  const role = ref(localStorage.getItem('role') || '')
+  const avatar = ref(localStorage.getItem('avatar') || '')
+
+  async function loadStudentId() {
+    if (role.value !== 'STUDENT' || !userId.value) {
+      return false
+    }
+    try {
+      const response = await api.get(`/student/user/${userId.value}`)
+      if (response.data.code === 200 && response.data.data) {
+        const data = response.data.data
+        // 后端返回的是studentId，不是id
+        studentId.value = data.studentId
+        localStorage.setItem('studentId', data.studentId)
+        // 加载头像
+        if (data.avatarUrl) {
+          avatar.value = data.avatarUrl
+          localStorage.setItem('avatar', data.avatarUrl)
+        }
+        return true
+      }
+      return false
+    } catch (error) {
+      // 404错误说明学生记录不存在，这是正常的
+      if (error.response?.status === 404 || error.response?.data?.code === 404) {
+        console.log('学生记录不存在，需要完善个人信息')
+        return false
+      }
+      console.error('获取学生信息失败', error)
+      return false
+    }
+  }
+
+  async function setUser(userInfo) {
+    token.value = userInfo.token
+    userId.value = userInfo.userId
+    username.value = userInfo.username
+    role.value = userInfo.role
+    avatar.value = userInfo.avatar || ''
+    
+    localStorage.setItem('token', userInfo.token)
+    localStorage.setItem('userId', userInfo.userId)
+    localStorage.setItem('username', userInfo.username)
+    localStorage.setItem('role', userInfo.role)
+    if (userInfo.avatar) {
+      localStorage.setItem('avatar', userInfo.avatar)
+    }
+    
+    // 如果是学生，加载学生ID（等待完成）
+    if (userInfo.role === 'STUDENT') {
+      await loadStudentId()
+    }
+  }
+
+  function clearUser() {
+    token.value = ''
+    userId.value = ''
+    studentId.value = ''
+    username.value = ''
+    role.value = ''
+    avatar.value = ''
+    
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('studentId')
+    localStorage.removeItem('username')
+    localStorage.removeItem('role')
+    localStorage.removeItem('avatar')
+  }
+
+  async function login(loginForm) {
+    const response = await api.post('/auth/login', {
+      ...loginForm,
+      type: 'STUDENT'
+    })
+    if (response.data.code === 200) {
+      await setUser(response.data.data)
+      return true
+    }
+    return false
+  }
+
+  return {
+    token,
+    userId,
+    studentId,
+    username,
+    role,
+    avatar,
+    setUser,
+    clearUser,
+    login,
+    loadStudentId
+  }
+})
+

@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: education-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 569811
+      MYSQL_DATABASE: education_management
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - education-network
+    restart: unless-stopped
+
+  # Redis缓存
+  redis:
+    image: redis:7.0
+    container_name: education-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass 123456
+    volumes:
+      - redis_data:/data
+    networks:
+      - education-network
+    restart: unless-stopped
+
+  # RabbitMQ消息队列
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: education-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - education-network
+    restart: unless-stopped
+
+  # MinIO对象存储
+  minio:
+    image: docker.m.daocloud.io/minio/minio
+    container_name: education-minio
+    ports:
+      - "9000:9000"
+      - "9100:9100"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123456
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9100"
+    networks:
+      - education-network
+    restart: unless-stopped
+
+  # Portainer容器管理
+  portainer:
+    image: portainer/portainer-ce
+    container_name: education-portainer
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - education-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  portainer_data:
+
+networks:
+  education-network:
+    driver: bridge
+
