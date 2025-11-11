@@ -20,24 +20,10 @@
             {{ formatTime(row.selectionTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button 
-              v-if="row.status === 0" 
-              type="success" 
-              size="small" 
-              @click="handleApprove(row, 1)"
-            >
-              通过
-            </el-button>
-            <el-button 
-              v-if="row.status === 0" 
-              type="danger" 
-              size="small" 
-              @click="handleApprove(row, 2)"
-            >
-              拒绝
-            </el-button>
+            <span v-if="row.status === 0" style="color: #67C23A;">已选课</span>
+            <span v-else style="color: #909399;">已退课</span>
           </template>
         </el-table-column>
       </el-table>
@@ -119,34 +105,18 @@ const loadData = async () => {
 
 const getStatusText = (status) => {
   const statusMap = {
-    0: '待审核',
-    1: '已通过',
-    2: '已拒绝'
+    0: '已选',  // 0-已选（正常状态）
+    1: '已退'   // 1-已退
   }
   return statusMap[status] || '未知'
 }
 
 const getStatusType = (status) => {
   const typeMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger'
+    0: 'success',  // 已选 - 成功状态
+    1: 'info'      // 已退 - 信息状态
   }
   return typeMap[status] || 'info'
-}
-
-const handleApprove = async (row, status) => {
-  try {
-    const response = await api.put(`/selection/${row.id}/approve`, null, {
-      params: { status }
-    })
-    if (response.data.code === 200) {
-      ElMessage.success('操作成功')
-      loadData()
-    }
-  } catch (error) {
-    ElMessage.error('操作失败')
-  }
 }
 
 const formatTime = (time) => {

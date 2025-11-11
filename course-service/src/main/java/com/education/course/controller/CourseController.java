@@ -48,5 +48,23 @@ public class CourseController {
         courseService.delete(id);
         return Result.success("删除成功");
     }
+    
+    /**
+     * 增加课程选课人数
+     */
+    @PutMapping("/{id}/increment-selected")
+    public Result<?> incrementSelectedCount(@PathVariable("id") Long id) {
+        courseService.incrementSelectedCount(id);
+        return Result.success("选课人数已增加");
+    }
+    
+    /**
+     * 减少课程选课人数
+     */
+    @PutMapping("/{id}/decrement-selected")
+    public Result<?> decrementSelectedCount(@PathVariable("id") Long id) {
+        courseService.decrementSelectedCount(id);
+        return Result.success("选课人数已减少");
+    }
 }
 

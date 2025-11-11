@@ -1,6 +1,7 @@
 package com.education.course.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class Course {
     private String courseDescription;
     private BigDecimal credit;
     private Long teacherId;
+    @TableField("teacher_name")
     private String teacherName;
     private String department;
     private Integer totalCapacity;

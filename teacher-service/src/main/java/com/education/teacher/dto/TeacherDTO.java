@@ -21,6 +21,9 @@ public class TeacherDTO {
     private String username; // 工号，作为用户名
     private String password; // 默认密码：123456
     
+    // 用于关联现有user_credentials的字段（用于消息服务）
+    private Long userId; // user_credentials表的id
+    
     // 兼容旧字段名
     public Long getId() {
         return teacherId;

@@ -25,15 +25,15 @@
         <el-table-column prop="score" label="成绩" width="150">
           <template #default="{ row }">
             <el-input-number
-              v-if="!row.editing"
               v-model="row.score"
               :min="0"
               :max="100"
               :precision="1"
+              :disabled="row.editing"
               @change="handleScoreChange(row)"
               style="width: 100px;"
+              placeholder="请输入成绩"
             />
-            <span v-else>{{ row.score !== null && row.score !== undefined ? row.score : '暂无' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
@@ -109,40 +109,98 @@ const loadData = async () => {
       params: {
         current: currentPage.value,
         size: pageSize.value,
-        courseId: selectedCourseId.value,
-        status: 1
+        courseId: selectedCourseId.value
+        // 移除 status 参数，因为新的选课流程中 status=0 表示已选
+        // 只显示已选课程（status=0），已退课程（status=1）不显示
       }
     })
     if (response.data.code === 200) {
-      tableData.value = response.data.data.records.map(r => ({
-        ...r,
-        editing: false
-      }))
-      total.value = response.data.data.total
+      // 只显示已选课程（status=0）
+      const allRecords = response.data.data.records || []
+      const selectedRecords = allRecords.filter(r => r.status === 0)
+      
+      // 调试：打印数据，检查学生信息
+      console.log('选课记录数据:', selectedRecords)
+      
+      tableData.value = selectedRecords.map(r => {
+        // 确保学生信息字段存在
+        const record = {
+          ...r,
+          editing: false,
+          studentName: r.studentName || '未知',
+          studentNo: r.studentNo || '未知'
+        }
+        // 如果学生信息为空，记录警告
+        if (!r.studentName || !r.studentNo) {
+          console.warn('学生信息缺失:', {
+            id: r.id,
+            studentId: r.studentId,
+            studentName: r.studentName,
+            studentNo: r.studentNo
+          })
+        }
+        return record
+      })
+      total.value = selectedRecords.length
+      
+      // 如果没有数据，提示用户
+      if (selectedRecords.length === 0) {
+        ElMessage.info('该课程暂无学生选课')
+      }
     }
   } catch (error) {
-    ElMessage.error('加载数据失败')
+    console.error('加载数据失败', error)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('加载数据失败')
+    }
+    tableData.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
 const handleScoreChange = (row) => {
-  row.editing = true
+  // 成绩改变时标记为已编辑
+  if (row.score !== null && row.score !== undefined) {
+    row.editing = true
+  }
 }
 
 const handleSaveScore = async (row) => {
   try {
+    if (row.score === null || row.score === undefined || row.score === '') {
+      ElMessage.warning('请输入成绩')
+      return
+    }
+    
+    // 验证成绩范围
+    const score = parseFloat(row.score)
+    if (isNaN(score) || score < 0 || score > 100) {
+      ElMessage.warning('成绩必须在0-100之间')
+      return
+    }
+    
     const response = await api.put(`/selection/${row.id}/score`, null, {
-      params: { score: row.score }
+      params: { score: score }
     })
+    
     if (response.data.code === 200) {
       ElMessage.success('保存成功')
       row.editing = false
       loadData()
+    } else {
+      ElMessage.error(response.data.message || '保存失败')
     }
   } catch (error) {
-    ElMessage.error('保存失败')
+    console.error('保存成绩失败', error)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('保存失败，请稍后重试')
+    }
   }
 }
 

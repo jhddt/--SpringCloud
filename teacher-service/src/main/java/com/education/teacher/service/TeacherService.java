@@ -305,8 +305,8 @@ public class TeacherService {
      * 用于教师端获取个人信息
      */
     public TeacherDTO getByUserId(Long userId) {
-        // 先查询user_credentials表，通过id获取teacher_id
-        UserCredential credential = userCredentialMapper.selectById(userId);
+        // 先查询user_credentials表（位于user_service_db），通过id获取teacher_id
+        UserCredential credential = userCredentialMapper.selectByIdFromUserDb(userId);
         if (credential == null) {
             return null;
         }
@@ -332,10 +332,11 @@ public class TeacherService {
         TeacherDTO dto = new TeacherDTO();
         BeanUtils.copyProperties(teacher, dto);
         
-        // 查询工号（username）从user_credentials表
+        // 查询工号（username）和userId从user_credentials表
         UserCredential credential = userCredentialMapper.selectByTeacherId(teacher.getTeacherId());
         if (credential != null) {
             dto.setUsername(credential.getUsername());
+            dto.setUserId(credential.getId()); // 设置userId，用于消息服务
         }
         
         // 解析contactInfo

@@ -3,11 +3,11 @@ import { ref } from 'vue'
 import api from '@/utils/api'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const userId = ref(localStorage.getItem('userId') || '')
-  const username = ref(localStorage.getItem('username') || '')
-  const role = ref(localStorage.getItem('role') || '')
-  const avatar = ref(localStorage.getItem('avatar') || '')
+  const token = ref(sessionStorage.getItem('token') || '')
+  const userId = ref(sessionStorage.getItem('userId') || '')
+  const username = ref(sessionStorage.getItem('username') || '')
+  const role = ref(sessionStorage.getItem('role') || '')
+  const avatar = ref(sessionStorage.getItem('avatar') || '')
 
   function setUser(userInfo) {
     token.value = userInfo.token
@@ -16,12 +16,12 @@ export const useUserStore = defineStore('user', () => {
     role.value = userInfo.role
     avatar.value = userInfo.avatar || ''
     
-    localStorage.setItem('token', userInfo.token)
-    localStorage.setItem('userId', userInfo.userId)
-    localStorage.setItem('username', userInfo.username)
-    localStorage.setItem('role', userInfo.role)
+    sessionStorage.setItem('token', userInfo.token)
+    sessionStorage.setItem('userId', userInfo.userId)
+    sessionStorage.setItem('username', userInfo.username)
+    sessionStorage.setItem('role', userInfo.role)
     if (userInfo.avatar) {
-      localStorage.setItem('avatar', userInfo.avatar)
+      sessionStorage.setItem('avatar', userInfo.avatar)
     }
   }
 
@@ -32,11 +32,11 @@ export const useUserStore = defineStore('user', () => {
     role.value = ''
     avatar.value = ''
     
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('username')
-    localStorage.removeItem('role')
-    localStorage.removeItem('avatar')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('userId')
+    sessionStorage.removeItem('username')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('avatar')
   }
 
   async function loadTeacherInfo() {
@@ -51,7 +51,7 @@ export const useUserStore = defineStore('user', () => {
         // 加载头像
         if (data.avatarUrl) {
           avatar.value = data.avatarUrl
-          localStorage.setItem('avatar', data.avatarUrl)
+          sessionStorage.setItem('avatar', data.avatarUrl)
         }
         return true
       }

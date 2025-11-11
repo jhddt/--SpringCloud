@@ -30,6 +30,24 @@ public class RabbitMQConfig {
     }
     
     /**
+     * 选课通知队列
+     */
+    @Bean
+    public Queue selectionNotificationQueue() {
+        return new Queue("selection.notification.queue", true);
+    }
+    
+    /**
+     * 选课通知绑定
+     */
+    @Bean
+    public Binding selectionNotificationBinding() {
+        return BindingBuilder.bind(selectionNotificationQueue())
+                .to(selectionExchange())
+                .with("selection.notification");
+    }
+    
+    /**
      * 配置 RabbitTemplate 的消息转换器（用于发送消息）
      */
     @Bean

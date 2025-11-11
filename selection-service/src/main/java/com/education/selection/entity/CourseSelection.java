@@ -15,6 +15,7 @@ public class CourseSelection {
     private Long studentId;
     private Long courseId;
     private Integer status; // 0-待审核，1-已通过，2-已拒绝
+    private Double score; // 成绩（0-100）
     private LocalDateTime selectionTime;
     private LocalDateTime approveTime;
     private LocalDateTime createTime;

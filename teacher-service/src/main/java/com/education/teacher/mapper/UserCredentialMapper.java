@@ -25,5 +25,8 @@ public interface UserCredentialMapper extends BaseMapper<UserCredential> {
     
     @Select("SELECT * FROM user_service_db.user_credentials WHERE teacher_id = #{teacherId}")
     UserCredential selectByTeacherId(@Param("teacherId") Long teacherId);
+    
+    @Select("SELECT * FROM user_service_db.user_credentials WHERE id = #{id}")
+    UserCredential selectByIdFromUserDb(@Param("id") Long id);
 }
 

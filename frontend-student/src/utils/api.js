@@ -14,6 +14,13 @@ api.interceptors.request.use(
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
     }
+    // 设置用户ID和角色头，用于后端权限验证
+    if (userStore.userId) {
+      config.headers['X-User-Id'] = userStore.userId
+    }
+    if (userStore.role) {
+      config.headers['X-Role'] = userStore.role
+    }
     return config
   },
   error => {

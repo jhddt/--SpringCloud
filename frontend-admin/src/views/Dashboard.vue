@@ -35,11 +35,11 @@
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
                 <el-tag 
-                  :type="row.status === 1 ? 'success' : row.status === 2 ? 'danger' : 'warning'"
+                  :type="row.status === 0 ? 'success' : 'info'"
                   effect="dark"
                   round
                 >
-                  {{ row.status === 1 ? '已通过' : row.status === 2 ? '已拒绝' : '待审核' }}
+                  {{ row.status === 0 ? '已选' : '已退' }}
                 </el-tag>
               </template>
             </el-table-column>

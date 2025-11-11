@@ -16,6 +16,7 @@ public class Enrollment {
     private Long courseId;
     private LocalDateTime enrollmentTime;
     private Integer status; // 0-已选，1-已退
+    private Double score; // 成绩（0-100）
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     

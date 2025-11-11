@@ -61,11 +61,11 @@
             <span>最近消息</span>
           </template>
           <el-table :data="recentMessages" v-loading="loading" style="width: 100%">
-            <el-table-column prop="receiverName" label="接收者" width="100" />
+            <el-table-column prop="senderName" label="发送人" width="100" />
             <el-table-column prop="content" label="内容" show-overflow-tooltip />
-            <el-table-column prop="createTime" label="时间" width="180">
+            <el-table-column prop="createdAt" label="时间" width="180">
               <template #default="{ row }">
-                {{ formatTime(row.createTime) }}
+                {{ formatTime(row.createdAt || row.createTime) }}
               </template>
             </el-table-column>
           </el-table>
@@ -132,13 +132,14 @@ const loadStatistics = async () => {
       statistics.value.pendingCount = pendingCount
     }
     
-    // 加载未读消息数
-    const messageResponse = await api.get('/message/page', {
-      params: { current: 1, size: 1, receiverId: userStore.userId, status: 0 }
-    })
-    
-    if (messageResponse.data.code === 200) {
-      statistics.value.unreadMessageCount = messageResponse.data.data.total || 0
+    // 加载未读消息数（使用新的API，从请求头获取userId）
+    try {
+      const messageResponse = await api.get('/message/unread-count')
+      if (messageResponse.data.code === 200) {
+        statistics.value.unreadMessageCount = messageResponse.data.data || 0
+      }
+    } catch (error) {
+      console.error('加载未读消息数失败', error)
     }
   } catch (error) {
     console.error('加载统计数据失败', error)
@@ -164,7 +165,7 @@ const loadMyCourses = async () => {
 const loadRecentMessages = async () => {
   try {
     const response = await api.get('/message/page', {
-      params: { current: 1, size: 5, senderId: userStore.userId }
+      params: { current: 1, size: 5 }
     })
     if (response.data.code === 200) {
       recentMessages.value = response.data.data.records || []

@@ -50,17 +50,9 @@
               size="small" 
               @click="handleCancel(row)"
             >
-              取消选课
-            </el-button>
-            <el-button 
-              v-else-if="row.status === 1" 
-              type="danger" 
-              size="small" 
-              @click="handleDrop(row)"
-            >
               退课
             </el-button>
-            <span v-else style="color: #999;">已拒绝</span>
+            <span v-else style="color: #999;">已退课</span>
           </template>
         </el-table-column>
       </el-table>
@@ -110,8 +102,14 @@ const loadData = async () => {
         }
       })
       if (response.data.code === 200) {
-        tableData.value = response.data.data.records
-        total.value = response.data.data.total
+        // 只显示已选课程（status=0），已退课程（status=1）可以根据需要显示或隐藏
+        // 这里我们显示所有记录，包括已退课的
+        tableData.value = response.data.data.records || []
+        total.value = response.data.data.total || 0
+      } else {
+        ElMessage.error(response.data.message || '加载数据失败')
+        tableData.value = []
+        total.value = 0
       }
     } else {
       // 学生记录不存在，显示空列表
@@ -130,18 +128,16 @@ const loadData = async () => {
 
 const getStatusText = (status) => {
   const statusMap = {
-    0: '待审核',
-    1: '已通过',
-    2: '已拒绝'
+    0: '已选',  // 0-已选（正常状态）
+    1: '已退'   // 1-已退
   }
   return statusMap[status] || '未知'
 }
 
 const getStatusType = (status) => {
   const typeMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger'
+    0: 'success',  // 已选 - 成功状态
+    1: 'info'      // 已退 - 信息状态
   }
   return typeMap[status] || 'info'
 }
@@ -158,80 +154,76 @@ const handleCancel = async (row) => {
       return
     }
     
-    await ElMessageBox.confirm('确定要取消选课吗？', '提示', {
+    await ElMessageBox.confirm('确定要退课吗？退课后将无法恢复，课程容量会释放。', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    const response = await api.delete(`/selection/${row.id}`, {
+    
+    // 使用正确的接口：PUT /selection/{id}/cancel
+    const response = await api.put(`/selection/${row.id}/cancel`, null, {
       params: { studentId: userStore.studentId }
     })
     if (response.data.code === 200) {
-      ElMessage.success('取消成功')
+      ElMessage.success(response.data.message || '退课成功')
       loadData()
+    } else {
+      ElMessage.error(response.data.message || '退课失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('取消失败')
-    }
-  }
-}
-
-const handleDrop = async (row) => {
-  try {
-    // 确保有学生ID
-    if (!userStore.studentId) {
-      await userStore.loadStudentId()
-    }
-    
-    if (!userStore.studentId) {
-      ElMessage.error('学生信息不存在')
-      return
-    }
-    
-    await ElMessageBox.confirm('确定要退课吗？退课后将无法恢复。', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    const response = await api.delete(`/selection/${row.id}`, {
-      params: { studentId: userStore.studentId }
-    })
-    if (response.data.code === 200) {
-      ElMessage.success('退课成功')
-      loadData()
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('退课失败')
+      console.error('退课失败', error)
+      if (error.response?.data?.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('退课失败，请稍后重试')
+      }
     }
   }
 }
 
 const getCoverImage = (row) => {
+  // 如果封面图片URL为空或无效，返回默认占位符
   if (!row.coverImage || row.coverImage.trim() === '') {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
+    return getDefaultCoverImage()
   }
   
+  // 如果URL是MinIO的直接访问地址，转换为通过后端代理访问
+  // 例如：http://localhost:9000/education-files/course-covers/xxx.jpg
+  // 转换为：/api/file/view?path=education-files/course-covers/xxx.jpg
   let imageUrl = row.coverImage
+  
+  // 检查是否是MinIO URL（包含 localhost:9000 或 127.0.0.1:9000）
   if (imageUrl.includes('localhost:9000') || imageUrl.includes('127.0.0.1:9000')) {
+    // 提取路径部分：从URL中提取 bucket-name/object-name
     try {
       const url = new URL(imageUrl)
+      // 移除开头的 /，得到路径：education-files/course-covers/xxx.jpg
       let path = url.pathname
       if (path.startsWith('/')) {
         path = path.substring(1)
       }
+      // 转换为代理URL
       imageUrl = `/api/file/view?path=${encodeURIComponent(path)}`
     } catch (e) {
-      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
+      // URL解析失败，使用默认图片
+      console.error('解析图片URL失败:', e)
+      return getDefaultCoverImage()
     }
   }
   
+  // 如果已经是代理URL格式，直接返回
   if (imageUrl.startsWith('/api/file/view')) {
     return imageUrl
   }
   
+  // 如果是其他格式的URL，直接返回（可能是外部URL）
   return imageUrl
+}
+
+const getDefaultCoverImage = () => {
+  // 使用 data URI 作为默认占位符图片（一个简单的灰色占位符）
+  return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7lm77niYfliqDovb3lpLHotKU8L3RleHQ+PC9zdmc+'
 }
 
 const formatTime = (time) => {

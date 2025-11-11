@@ -36,11 +36,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="courseCode" label="课程代码" width="120" />
-        <el-table-column prop="courseName" label="课程名称" />
+        <el-table-column prop="courseName" label="课程名称" min-width="200" />
         <el-table-column prop="teacherName" label="授课教师" width="120" />
         <el-table-column prop="credit" label="学分" width="80" />
         <el-table-column prop="totalCapacity" label="总容量" width="100" />
         <el-table-column prop="selectedCount" label="已选人数" width="100" />
+        <el-table-column label="剩余容量" width="100">
+          <template #default="{ row }">
+            <el-tag :type="(row.totalCapacity - row.selectedCount) > 0 ? 'success' : 'danger'" size="small">
+              {{ (row.totalCapacity || 0) - (row.selectedCount || 0) }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">
@@ -51,21 +58,12 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button 
-              v-if="row.status === 1 && !isSelected(row.id)" 
+              v-if="row.status === 1" 
               type="primary" 
               size="small" 
               @click="handleSelect(row)"
-              :disabled="isFull(row)"
             >
-              {{ isFull(row) ? '已满' : '选课' }}
-            </el-button>
-            <el-button 
-              v-else-if="isSelected(row.id)" 
-              type="info" 
-              size="small" 
-              disabled
-            >
-              已选
+              选课
             </el-button>
             <el-button 
               type="info" 
@@ -104,13 +102,18 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="课程描述" :span="2">
-          {{ currentCourse.description || '暂无描述' }}
+          {{ currentCourse.courseDescription || currentCourse.description || '暂无描述' }}
         </el-descriptions-item>
         <el-descriptions-item label="开始时间" :span="2">
-          {{ formatTime(currentCourse.startTime) }}
+          {{ formatTime(currentCourse.startTime) || '未设置' }}
         </el-descriptions-item>
         <el-descriptions-item label="结束时间" :span="2">
-          {{ formatTime(currentCourse.endTime) }}
+          {{ formatTime(currentCourse.endTime) || '未设置' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="剩余容量" :span="2">
+          <el-tag :type="(currentCourse.totalCapacity - currentCourse.selectedCount) > 0 ? 'success' : 'danger'">
+            {{ (currentCourse.totalCapacity || 0) - (currentCourse.selectedCount || 0) }} / {{ currentCourse.totalCapacity || 0 }}
+          </el-tag>
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -133,67 +136,51 @@ const keyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
-const selectedCourseIds = ref([])
 const detailVisible = ref(false)
 const currentCourse = ref(null)
 
 const loadData = async () => {
   loading.value = true
   try {
-    const response = await api.get('/course/page', {
-      params: {
-        current: currentPage.value,
-        size: pageSize.value,
-        keyword: keyword.value,
-        status: 1
-      }
-    })
-    if (response.data.code === 200) {
-      tableData.value = response.data.data.records
-      total.value = response.data.data.total
-      // 加载已选课程ID
-      await loadSelectedCourseIds()
-    }
-  } catch (error) {
-    ElMessage.error('加载数据失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadSelectedCourseIds = async () => {
-  try {
     // 确保有学生ID（如果学生记录存在）
     if (!userStore.studentId) {
       await userStore.loadStudentId()
     }
     
-    // 如果学生记录存在，加载已选课程
+    // 使用新的可选课程接口，自动过滤已选、已满、时间冲突等课程
+    // studentId 为可选参数，如果学生信息不存在，仍然可以查看课程（只是不能选课）
+    const params = {
+      current: currentPage.value,
+      size: pageSize.value,
+      keyword: keyword.value
+    }
+    
+    // 如果学生ID存在，添加到参数中
     if (userStore.studentId) {
-      const response = await api.get('/selection/page', {
-        params: { current: 1, size: 1000, studentId: userStore.studentId }
-      })
-      if (response.data.code === 200) {
-        selectedCourseIds.value = (response.data.data.records || [])
-          .filter(s => s.status === 1 || s.status === 0)
-          .map(s => s.courseId)
-      }
+      params.studentId = userStore.studentId
+    }
+    
+    const response = await api.get('/selection/available', { params })
+    if (response.data.code === 200) {
+      tableData.value = response.data.data.records || []
+      total.value = response.data.data.total || 0
     } else {
-      // 学生记录不存在，已选课程列表为空
-      selectedCourseIds.value = []
+      ElMessage.error(response.data.message || '加载数据失败')
+      tableData.value = []
+      total.value = 0
     }
   } catch (error) {
-    console.error('加载已选课程失败', error)
-    selectedCourseIds.value = []
+    console.error('加载数据失败', error)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('加载数据失败')
+    }
+    tableData.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
   }
-}
-
-const isSelected = (courseId) => {
-  return selectedCourseIds.value.includes(courseId)
-}
-
-const isFull = (course) => {
-  return course.selectedCount >= course.totalCapacity
 }
 
 const handleSelect = async (row) => {
@@ -223,16 +210,15 @@ const handleSelect = async (row) => {
     const response = await api.post('/selection/select', null, {
       params: {
         studentId: userStore.studentId,
-        courseId: row.id
+        courseId: row.courseId || row.id
       }
     })
     if (response.data.code === 200) {
-      ElMessage.success('选课成功，等待审核')
-      selectedCourseIds.value.push(row.id)
-      // 重新加载数据以更新已选状态
-      await loadSelectedCourseIds()
-      // 刷新课程列表以更新已选人数
-      loadData()
+      ElMessage.success(response.data.message || '选课成功')
+      // 刷新课程列表（该课程会被自动过滤，因为已选）
+      await loadData()
+      // 提示用户查看我的选课
+      ElMessage.info('您可以在"我的选课"中查看已选课程')
     } else {
       ElMessage.error(response.data.message || '选课失败')
     }
@@ -240,9 +226,11 @@ const handleSelect = async (row) => {
     console.error('选课失败', error)
     // 处理特定的错误情况
     if (error.response?.status === 400) {
-      // 400错误可能是业务逻辑错误（如已选课、课程已满等）
+      // 400错误可能是业务逻辑错误（如已选课、课程已满、时间冲突、学分超限等）
       const errorMsg = error.response.data?.message || '选课失败'
       ElMessage.error(errorMsg)
+      // 如果选课失败，重新加载数据以更新状态
+      await loadData()
     } else if (error.response?.data?.message) {
       ElMessage.error(error.response.data.message)
     } else {

@@ -1,0 +1,241 @@
+# ========================================
+# 性能优化后的配置文件
+# ========================================
+# 使用方法：将此配置合并到各服务的 application.yml 中
+
+# ========================================
+# 1. 数据库连接池优化（适用于所有数据库服务）
+# ========================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/message_service_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true
+    username: root
+    password: 569811
+    druid:
+      # 连接池配置
+      initial-size: 10                # 初始连接数（优化前：5）
+      min-idle: 10                    # 最小空闲连接（优化前：5）
+      max-active: 50                  # 最大活跃连接（优化前：20）
+      max-wait: 60000                 # 获取连接最大等待时间（60秒）
+      
+      # 连接保活配置
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      
+      # 预编译语句池
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+      
+      # 监控统计
+      filters: stat,wall,slf4j
+      
+      # 慢SQL记录
+      filter:
+        stat:
+          slow-sql-millis: 1000       # 慢SQL阈值（1秒）
+          log-slow-sql: true
+          merge-sql: true
+        wall:
+          enabled: true
+          config:
+            multi-statement-allow: true
+      
+      # Web监控配置
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
+      
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        reset-enable: false
+        login-username: admin
+        login-password: admin123
+
+# ========================================
+# 2. Redis 连接池优化（适用于所有使用 Redis 的服务）
+# ========================================
+  data:
+    redis:
+      host: 192.168.141.128
+      port: 6379
+      password: 123456
+      database: 0
+      timeout: 5000                   # 超时时间（优化前：3000）
+      lettuce:
+        pool:
+          max-active: 50              # 最大活跃连接（优化前：8）
+          max-idle: 20                # 最大空闲连接（优化前：8）
+          min-idle: 5                 # 最小空闲连接（优化前：0）
+          max-wait: 3000              # 最大等待时间（3秒）
+        shutdown-timeout: 100ms
+
+# ========================================
+# 3. Spring Cache 配置（message-service）
+# ========================================
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000           # 缓存过期时间（1小时）
+      cache-null-values: false        # 不缓存空值
+      key-prefix: "message:cache:"
+      use-key-prefix: true
+
+# ========================================
+# 4. Feign 客户端优化（适用于所有使用 Feign 的服务）
+# ========================================
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000         # 连接超时（优化前：5000）
+        readTimeout: 10000            # 读取超时（优化前：5000）
+        loggerLevel: basic            # 日志级别
+  
+  # 启用 Apache HttpClient（需要添加依赖）
+  httpclient:
+    enabled: true
+    max-connections: 200              # 最大连接数
+    max-connections-per-route: 50     # 每个路由的最大连接数
+    connection-timeout: 10000
+    connection-timer-repeat: 3000
+  
+  # 启用压缩
+  compression:
+    request:
+      enabled: true
+      mime-types: text/xml,application/xml,application/json
+      min-request-size: 2048
+    response:
+      enabled: true
+  
+  # 启用熔断器（需要添加 Sentinel 或 Hystrix 依赖）
+  sentinel:
+    enabled: false                    # 如需启用，设置为 true
+  
+  # 启用重试（需要添加 spring-retry 依赖）
+  retry:
+    enabled: false                    # 如需启用，设置为 true
+
+# ========================================
+# 5. MyBatis-Plus 优化
+# ========================================
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true               # 启用二级缓存
+    lazy-loading-enabled: true        # 启用延迟加载
+    aggressive-lazy-loading: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted     # 逻辑删除字段
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+    banner: false
+
+# ========================================
+# 6. Spring Boot Actuator 监控
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# ========================================
+# 7. 日志配置优化
+# ========================================
+logging:
+  level:
+    root: INFO
+    com.education: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    com.alibaba.nacos: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/${spring.application.name}.log
+    max-size: 100MB
+    max-history: 30
+
+# ========================================
+# 8. 线程池配置（异步任务）
+# ========================================
+spring:
+  task:
+    execution:
+      pool:
+        core-size: 10                 # 核心线程数
+        max-size: 20                  # 最大线程数
+        queue-capacity: 100           # 队列容量
+        keep-alive: 60s
+      thread-name-prefix: async-task-
+
+# ========================================
+# 9. Tomcat 服务器优化
+# ========================================
+server:
+  port: 8088
+  tomcat:
+    threads:
+      max: 200                        # 最大线程数（默认：200）
+      min-spare: 10                   # 最小空闲线程数（默认：10）
+    max-connections: 10000            # 最大连接数（默认：8192）
+    accept-count: 100                 # 等待队列长度（默认：100）
+    connection-timeout: 20000         # 连接超时（20秒）
+  compression:
+    enabled: true                     # 启用响应压缩
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+    min-response-size: 1024
+
+# ========================================
+# 10. Nacos 配置优化
+# ========================================
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        enabled: true
+        register-enabled: true
+        heart-beat-interval: 5000     # 心跳间隔（5秒）
+        heart-beat-timeout: 15000     # 心跳超时（15秒）
+        ip-delete-timeout: 30000      # IP删除超时（30秒）
+      config:
+        server-addr: localhost:8848
+        file-extension: yml
+        import-check:
+          enabled: false
+        enabled: false
+        refresh-enabled: true         # 启用配置自动刷新
+
+# ========================================
+# 注意事项
+# ========================================
+# 1. 根据实际服务器配置调整连接池大小
+# 2. 监控内存使用，避免 OOM
+# 3. 定期查看 Druid 监控面板
+# 4. 关注慢SQL日志
+# 5. 使用 Actuator 监控应用健康状态
+# ========================================

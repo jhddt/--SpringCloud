@@ -3,12 +3,12 @@ import { ref } from 'vue'
 import api from '@/utils/api'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const userId = ref(localStorage.getItem('userId') || '')
-  const studentId = ref(localStorage.getItem('studentId') || '')
-  const username = ref(localStorage.getItem('username') || '')
-  const role = ref(localStorage.getItem('role') || '')
-  const avatar = ref(localStorage.getItem('avatar') || '')
+  const token = ref(sessionStorage.getItem('token') || '')
+  const userId = ref(sessionStorage.getItem('userId') || '')
+  const studentId = ref(sessionStorage.getItem('studentId') || '')
+  const username = ref(sessionStorage.getItem('username') || '')
+  const role = ref(sessionStorage.getItem('role') || '')
+  const avatar = ref(sessionStorage.getItem('avatar') || '')
 
   async function loadStudentId() {
     if (role.value !== 'STUDENT' || !userId.value) {
@@ -20,11 +20,11 @@ export const useUserStore = defineStore('user', () => {
         const data = response.data.data
         // 后端返回的是studentId，不是id
         studentId.value = data.studentId
-        localStorage.setItem('studentId', data.studentId)
+        sessionStorage.setItem('studentId', data.studentId)
         // 加载头像
         if (data.avatarUrl) {
           avatar.value = data.avatarUrl
-          localStorage.setItem('avatar', data.avatarUrl)
+          sessionStorage.setItem('avatar', data.avatarUrl)
         }
         return true
       }
@@ -47,12 +47,12 @@ export const useUserStore = defineStore('user', () => {
     role.value = userInfo.role
     avatar.value = userInfo.avatar || ''
     
-    localStorage.setItem('token', userInfo.token)
-    localStorage.setItem('userId', userInfo.userId)
-    localStorage.setItem('username', userInfo.username)
-    localStorage.setItem('role', userInfo.role)
+    sessionStorage.setItem('token', userInfo.token)
+    sessionStorage.setItem('userId', userInfo.userId)
+    sessionStorage.setItem('username', userInfo.username)
+    sessionStorage.setItem('role', userInfo.role)
     if (userInfo.avatar) {
-      localStorage.setItem('avatar', userInfo.avatar)
+      sessionStorage.setItem('avatar', userInfo.avatar)
     }
     
     // 如果是学生，加载学生ID（等待完成）
@@ -69,12 +69,12 @@ export const useUserStore = defineStore('user', () => {
     role.value = ''
     avatar.value = ''
     
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('studentId')
-    localStorage.removeItem('username')
-    localStorage.removeItem('role')
-    localStorage.removeItem('avatar')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('userId')
+    sessionStorage.removeItem('studentId')
+    sessionStorage.removeItem('username')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('avatar')
   }
 
   async function login(loginForm) {

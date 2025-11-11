@@ -10,31 +10,93 @@ spring:
     username: root
     password: 569811
     druid:
-      initial-size: 5
-      min-idle: 5
-      max-active: 20
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+      filters: stat,wall,slf4j
+      filter:
+        stat:
+          slow-sql-millis: 1000
+          log-slow-sql: true
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        reset-enable: false
+        login-username: admin
+        login-password: admin123
   data:
     redis:
       host: 192.168.141.128
       port: 6379
       password: 123456
       database: 0
-      timeout: 3000
+      timeout: 5000
       lettuce:
         pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+          max-wait: 3000
+        shutdown-timeout: 100ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: false
+      key-prefix: "message:cache:"
+      use-key-prefix: true
   cloud:
     nacos:
       discovery:
         server-addr: localhost:8848
         namespace: public
+    loadbalancer:
+      enabled: true
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000
+        readTimeout: 10000
+        loggerLevel: basic
+  httpclient:
+    enabled: true
+    max-connections: 200
+    max-connections-per-route: 50
+  compression:
+    request:
+      enabled: true
+      mime-types: text/xml,application/xml,application/json
+      min-request-size: 2048
+    response:
+      enabled: true
 
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    aggressive-lazy-loading: false
   global-config:
     db-config:
       id-type: auto
+
+logging:
+  level:
+    com.education: DEBUG
+    com.baomidou.mybatisplus: INFO
 

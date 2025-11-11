@@ -315,13 +315,14 @@ public class StudentService {
         dto.setAvatarUrl(student.getAvatarUrl());
         dto.setStatus(student.getStatus());
         
-        // 查询学号（username）
+        // 查询学号（username）和userId
         UserCredential credential = userCredentialMapper.selectOne(
             new LambdaQueryWrapper<UserCredential>()
                 .eq(UserCredential::getStudentId, student.getStudentId())
         );
         if (credential != null) {
             dto.setUsername(credential.getUsername());
+            dto.setUserId(credential.getId()); // 设置userId，用于消息服务
         }
         
         // 解析contactInfo

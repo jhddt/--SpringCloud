@@ -6,6 +6,20 @@ spring:
     name: gateway-service
   config:
     import: optional:nacos:gateway-service.yml
+  data:
+    redis:
+      host: 192.168.141.128
+      port: 6379
+      password: 123456
+      database: 0
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+          max-wait: 3000
+        shutdown-timeout: 100ms
   cloud:
     nacos:
       discovery:
@@ -20,6 +34,12 @@ spring:
           enabled: false
         enabled: false
     gateway:
+      httpclient:
+        connect-timeout: 10000
+        response-timeout: 30s
+        pool:
+          max-connections: 500
+          max-idle-time: 30s
       discovery:
         locator:
           enabled: true

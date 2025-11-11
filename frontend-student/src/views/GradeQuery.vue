@@ -95,12 +95,19 @@ const loadData = async () => {
         params: {
           current: 1,
           size: 1000,
-          studentId: userStore.studentId,
-          status: 1
+          studentId: userStore.studentId
+          // 移除 status 参数，因为新的选课流程中 status=0 表示已选
+          // 只显示已选课程（status=0），已退课程（status=1）不显示
         }
       })
       if (response.data.code === 200) {
-        tableData.value = response.data.data.records || []
+        // 只显示已选课程（status=0）
+        const allRecords = response.data.data.records || []
+        tableData.value = allRecords.filter(r => r.status === 0)
+        calculateStatistics()
+      } else {
+        ElMessage.error(response.data.message || '加载数据失败')
+        tableData.value = []
         calculateStatistics()
       }
     } else {
@@ -119,7 +126,8 @@ const loadData = async () => {
 }
 
 const calculateStatistics = () => {
-  const records = tableData.value.filter(r => r.status === 1)
+  // 只统计已选课程（status=0），tableData 已经过滤了
+  const records = tableData.value
   statistics.value.totalCount = records.length
   
   // 计算总学分

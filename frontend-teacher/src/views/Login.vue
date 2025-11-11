@@ -24,6 +24,7 @@
                 placeholder="请输入用户名"
                 size="large"
                 class="custom-input"
+                @keyup.enter="handleLogin"
               />
             </div>
           </el-form-item>
